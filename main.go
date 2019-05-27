@@ -8,14 +8,12 @@ import (
 	"github.com/weiwenwang/ProductAndConsumer/Mysql/Commodity"
 	"fmt"
 	"sync"
-	"time"
 )
 
-const CONSUMER_NUMBER = 1
-const PRODUCT_NUMBER = 20
+const CONSUMER_NUMBER = 1 // 消费者的数量
+const PRODUCT_NUMBER = 20 // 生产者的数量
 
 func main() {
-	fmt.Println("begin:", time.Now())
 	wg := sync.WaitGroup{}
 	Mysql.InitDB()
 	Redis.InitRedis()
@@ -27,20 +25,19 @@ func main() {
 	}
 
 	go func(wg *sync.WaitGroup) {
-		wgg := sync.WaitGroup{}
-		wgg.Add(PRODUCT_NUMBER)
+		sub_wg := sync.WaitGroup{}
+		sub_wg.Add(PRODUCT_NUMBER)
 		for j := 0; j < PRODUCT_NUMBER; j++ {
-			go doMysql(j, ch, &wgg)
+			go doMysql(j, ch, &sub_wg)
 		}
-		wgg.Wait()
-		close(ch)
+		sub_wg.Wait()
+		close(ch) // 所有的生产者都退出来了， 可以关闭chan了
 		wg.Done()
-		fmt.Println("product exit")
+		fmt.Println("all producers exit")
 	}(&wg)
 
 	wg.Wait()
 	fmt.Println("over")
-	fmt.Println("end:", time.Now())
 }
 
 func doMysql(j int, ch chan []Commodity2.Commodity, wg *sync.WaitGroup) {
@@ -53,7 +50,7 @@ func doMysql(j int, ch chan []Commodity2.Commodity, wg *sync.WaitGroup) {
 		}
 	}
 	wg.Done()
-	fmt.Println("product:", j)
+	fmt.Println("producer:", j, "退出了")
 }
 
 func doRedis(i int, ch chan []Commodity2.Commodity, wg *sync.WaitGroup) {
@@ -61,9 +58,9 @@ func doRedis(i int, ch chan []Commodity2.Commodity, wg *sync.WaitGroup) {
 		if v, ok := <-ch; ok {
 			Commodity3.Consumer(v)
 		} else {
-			break; //表示channel已经被关闭，退出循环
+			break; //表示channel已经被关闭，退出当前goroutine
 		}
 	}
 	wg.Done()
-	fmt.Println("goroutine ", i, " 退出了")
+	fmt.Println("consumer ", i, " 退出了")
 }
