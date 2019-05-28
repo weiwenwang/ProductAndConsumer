@@ -15,8 +15,8 @@ const PRODUCT_NUMBER = 20 // 生产者的数量
 
 func main() {
 	wg := sync.WaitGroup{}
-	Mysql.InitDB()
-	Redis.InitRedis()
+	Mysql.InitDB()    // 初始化Mysql
+	Redis.InitRedis() // 初始化Redis
 
 	ch := make(chan []Commodity2.Commodity, CONSUMER_NUMBER)
 	wg.Add(CONSUMER_NUMBER + 1)
@@ -24,7 +24,7 @@ func main() {
 		go doRedis(i, ch, &wg)
 	}
 
-	go func(wg *sync.WaitGroup) {
+	go func() {
 		sub_wg := sync.WaitGroup{}
 		sub_wg.Add(PRODUCT_NUMBER)
 		for j := 0; j < PRODUCT_NUMBER; j++ {
@@ -34,13 +34,13 @@ func main() {
 		close(ch) // 所有的生产者都退出来了， 可以关闭chan了
 		wg.Done()
 		fmt.Println("all producers exit")
-	}(&wg)
+	}()
 
 	wg.Wait()
 	fmt.Println("over")
 }
 
-func doMysql(j int, ch chan []Commodity2.Commodity, wg *sync.WaitGroup) {
+func doMysql(j int, ch <-chan []Commodity2.Commodity, wg *sync.WaitGroup) {
 	for {
 		node, bl := Commodity.Info()
 		if !bl {
@@ -53,7 +53,7 @@ func doMysql(j int, ch chan []Commodity2.Commodity, wg *sync.WaitGroup) {
 	fmt.Println("producer:", j, "退出了")
 }
 
-func doRedis(i int, ch chan []Commodity2.Commodity, wg *sync.WaitGroup) {
+func doRedis(i int, ch <-chan []Commodity2.Commodity, wg *sync.WaitGroup) {
 	for {
 		if v, ok := <-ch; ok {
 			Commodity3.Consumer(v)
